@@ -23,6 +23,8 @@ router.post("/register", async (req, res) => {
     addressComplement,
     addressStreet,
     addressNeighborhood,
+    city,
+    state,
   } = req.body;
 
   try {
@@ -55,6 +57,8 @@ router.post("/register", async (req, res) => {
       addressComplement,
       addressStreet,
       addressNeighborhood,
+      city,
+      state,
     });
 
 

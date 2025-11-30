@@ -8,6 +8,7 @@ const {
   getAnimalsBySpecies,
   getAnimalsBySex,
 } = require('../controllers/animalController.js');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -16,10 +17,10 @@ router.get('/species/:especie', getAnimalsBySpecies);  // GET /animals/species/:
 router.get('/sex/:sexo', getAnimalsBySex);             // GET /animals/sex/:sexo
 
 // Rotas CRUD básicas
-router.post('/', createAnimal);              // POST /animals
+router.post('/', auth, createAnimal);              // POST /animals
 router.get('/', getAllAnimals);              // GET /animals
 router.get('/:id', getAnimalById);           // GET /animals/:id
-router.put('/:id', updateAnimal);            // PUT /animals/:id
-router.delete('/:id', deleteAnimal);         // DELETE /animals/:id
+router.put('/:id', auth, updateAnimal);            // PUT /animals/:id
+router.delete('/:id', auth, deleteAnimal);         // DELETE /animals/:id
 
 module.exports = router;

@@ -3,13 +3,17 @@ const jwt = require('jsonwebtoken'); // Para obter o ID do usuário do token
 
 exports.createPet = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    // aceitar token tanto em Authorization: Bearer <token> quanto em x-auth-token
+    let token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      token = req.headers['x-auth-token'] || req.header('x-auth-token');
+    }
     if (!token) {
       return res.status(401).json({ message: 'Token de autenticação não fornecido.' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const ownerId = decoded.id; // Assumindo que o ID do usuário está no token
+    const ownerId = decoded.user?.id || decoded.id; // aceita payload { user: { id } } ou { id }
 
     const { name, species, breed, age, neutered, sex, weight, temperament } = req.body;
 
@@ -42,13 +46,17 @@ exports.createPet = async (req, res) => {
 
 exports.getPets = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    // aceitar token tanto em Authorization: Bearer <token> quanto em x-auth-token
+    let token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      token = req.headers['x-auth-token'] || req.header('x-auth-token');
+    }
     if (!token) {
       return res.status(401).json({ message: 'Token de autenticação não fornecido.' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const ownerId = decoded.id;
+    const ownerId = decoded.user?.id || decoded.id;
 
     const pets = await PetService.getPetsByOwner(ownerId);
     res.status(200).json(pets);

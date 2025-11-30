@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const animalSchema = new mongoose.Schema({
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     nome: { type: String, required: true },
     especie: { type: String, required: true },
     raca: { type: String },

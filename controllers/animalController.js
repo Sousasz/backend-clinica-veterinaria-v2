@@ -1,22 +1,76 @@
 const Animal = require('../models/animalModel.js');
 
+// Helper: deriva atributos básicos a partir do nome do pet
+const deriveAttributesFromName = (nome) => {
+  if (!nome || typeof nome !== 'string') return {};
+  const name = nome.toLowerCase().trim();
+
+  // heurísticas simples com fallback
+  const dogs = ['rex', 'fido', 'bolt', 'buddy', 'max', 'toto', 'rocky'];
+  const cats = ['luna', 'miau', 'whiskers', 'cleo', 'nina', 'kitty', 'garfield'];
+
+  let especie = 'Outro';
+  if (dogs.some(d => name.includes(d))) especie = 'Cachorro';
+  else if (cats.some(c => name.includes(c))) especie = 'Gato';
+
+  // raça padrão por espécie
+  let raca = 'SRD';
+  if (especie === 'Cachorro') raca = 'SRD';
+  if (especie === 'Gato') raca = 'SRD';
+
+  // castrado heurística (nomes contendo 'castrado' ou 'castrada')
+  const castrado = /castrad(o|a)/i.test(name) ? true : false;
+
+  // sexo heurística simples: nomes terminados em 'a' tendem a ser fêmeas (apenas heurística)
+  let sexo = 'Não Informado';
+  if (/[aá]$/.test(name)) sexo = 'Fêmea';
+  else if (/[oó]$/.test(name) || /rex|max|buddy|rocky|bolt|fido/.test(name)) sexo = 'Macho';
+
+  // peso estimado por espécie
+  let peso = null;
+  if (especie === 'Cachorro') peso = 12; // valor médio
+  else if (especie === 'Gato') peso = 4;
+
+  // temperamento por nome (heurística divertida)
+  let temperamento = 'Calmo';
+  if (/rex|bolt|rocky|max/.test(name)) temperamento = 'Alerta';
+  if (/miau|kitty|luna/.test(name)) temperamento = 'Carinhoso';
+
+  return { especie, raca, castrado, sexo, peso, temperamento };
+};
+
 // Criar um novo animal
 const createAnimal = async (req, res) => {
   try {
-    const { nome, especie, raca, castrado, sexo, peso, temperamento } = req.body;
+    // req.user deve ser preenchido pelo middleware de autenticação
+    const userId = req.user?.id || req.user?._id;
 
-    // Validação básica
-    if (!nome || !especie || !sexo) {
-      return res.status(400).json({ 
-        message: 'Nome, espécie e sexo são obrigatórios.' 
-      });
+    if (!userId) {
+      return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
 
+    const { nome } = req.body;
+
+    // Nome é obrigatório; os demais campos podem ser derivados a partir do nome
+    if (!nome) {
+      return res.status(400).json({ message: 'Nome do animal é obrigatório.' });
+    }
+
+    // Deriva atributos a partir do nome quando campos não são enviados
+    const derived = deriveAttributesFromName(nome);
+    const especie = req.body.especie || derived.especie;
+    const raca = req.body.raca || derived.raca;
+    const castrado = typeof req.body.castrado === 'boolean' ? req.body.castrado : derived.castrado || false;
+    const sexo = req.body.sexo || derived.sexo || 'Não Informado';
+    const peso = typeof req.body.peso === 'number' ? req.body.peso : derived.peso || null;
+    const temperamento = req.body.temperamento || derived.temperamento || null;
+
     const newAnimal = new Animal({
+      owner: userId,
       nome,
       especie,
       raca,
-      castrado: castrado || false,
+      castrado,
       sexo,
       peso,
       temperamento,
@@ -76,7 +130,30 @@ const getAnimalById = async (req, res) => {
 const updateAnimal = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, especie, raca, castrado, sexo, peso, temperamento } = req.body;
+    const { nome } = req.body;
+
+    // Se o nome for informado e outros campos faltarem, derivamos os valores
+    const derived = nome ? deriveAttributesFromName(nome) : {};
+    const especie = req.body.especie || derived.especie;
+    const raca = req.body.raca || derived.raca;
+    const castrado = typeof req.body.castrado === 'boolean' ? req.body.castrado : derived.castrado || false;
+    const sexo = req.body.sexo || derived.sexo || 'Não Informado';
+    const peso = typeof req.body.peso === 'number' ? req.body.peso : derived.peso || null;
+    const temperamento = req.body.temperamento || derived.temperamento || null;
+
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }
+
+    // Verifica propriedade do animal
+    const foundAnimal = await Animal.findById(id);
+    if (!foundAnimal) {
+      return res.status(404).json({ message: 'Animal não encontrado' });
+    }
+    if (foundAnimal.owner && foundAnimal.owner.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'Você não tem permissão para atualizar este animal.' });
+    }
 
     const animal = await Animal.findByIdAndUpdate(
       id,
@@ -107,6 +184,22 @@ const updateAnimal = async (req, res) => {
 const deleteAnimal = async (req, res) => {
   try {
     const { id } = req.params;
+
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }
+
+    // Verifica propriedade do animal
+    const foundAnimal = await Animal.findById(id);
+    if (!foundAnimal) {
+      return res.status(404).json({ 
+        message: 'Animal não encontrado' 
+      });
+    }
+    if (foundAnimal.owner && foundAnimal.owner.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'Você não tem permissão para deletar este animal.' });
+    }
 
     const animal = await Animal.findByIdAndDelete(id);
     if (!animal) {

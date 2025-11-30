@@ -38,6 +38,16 @@ class AppointmentService {
   }
 
   // Adicione métodos para atualizar e deletar agendamentos se necessário
+
+  static async updateAppointment(id, updateData) {
+    try {
+      const updated = await Appointment.findByIdAndUpdate(id, updateData, { new: true });
+      return { success: true, appointment: updated, status: 200 };
+    } catch (error) {
+      console.error('Erro no AppointmentService.updateAppointment:', error);
+      return { success: false, message: 'Erro interno ao atualizar agendamento', status: 500 };
+    }
+  }
 }
 
 module.exports = AppointmentService;
