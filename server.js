@@ -10,7 +10,6 @@ const chatRoutes = require("./api/chat/index.js");
 const petRoutes = require('./routes/pets'); 
 const medicineRoutes = require('./routes/medicines'); 
 const vaccineRoutes = require('./routes/vaccines'); 
-const ratingRoutes = require('./routes/rating'); 
 const appointmentRoutes = require('./routes/appointments'); 
 const userRoutes = require('./routes/user');
 const animalRoutes = require('./routes/animals');
@@ -23,7 +22,6 @@ console.log('route types:', {
   pets: typeof petRoutes,
   medicines: typeof medicineRoutes,
   vaccines: typeof vaccineRoutes,
-  ratings: typeof ratingRoutes,
   appointments: typeof appointmentRoutes,
   user: typeof userRoutes,
   animals: typeof animalRoutes,
@@ -99,7 +97,6 @@ mount('/api/services', serviceRoutes);
 mount('/api/pets', petRoutes);
 mount('/api/medicines', medicineRoutes);
 mount('/api/vaccines', vaccineRoutes);
-mount('/api/ratings', ratingRoutes);
 mount('/api/appointments', appointmentRoutes);
 mount('/api/animals', animalRoutes);
 // cpf route removed (CPF validation feature reverted)
