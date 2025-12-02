@@ -34,12 +34,22 @@ console.log('After connectDB');
 const app = express();
 
 // Configura CORS de forma mais robusta — permite origens definidas e responde a preflight
-const allowedOrigins = [
+const defaultAllowedOrigins = [
   "https://joyce-veterinaria.vercel.app",
   "https://clinica-veterinaria-frontend.vercel.app",
   "http://localhost:3000",
   "http://localhost:3001",
 ];
+
+// Permitir configuração via variável de ambiente (ex: RENDER_APP_URL ou ALLOWED_ORIGINS)
+const envAllowed = (process.env.ALLOWED_ORIGINS || "")
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowed]));
+
+console.log('Allowed CORS origins:', allowedOrigins);
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -51,10 +61,11 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
     }
+    console.warn(`CORS blocked for origin: ${origin}`);
     return callback(new Error('Origin not allowed by CORS'));
   },
   methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
-  allowedHeaders: ["Content-Type", "x-auth-token", "Authorization"],
+  allowedHeaders: ["Content-Type", "x-auth-token", "Authorization", "Accept"],
   credentials: true,
 };
 
