@@ -37,6 +37,7 @@ const app = express();
 const defaultAllowedOrigins = [
   "https://joyce-veterinaria.vercel.app",
   "https://clinica-veterinaria-frontend.vercel.app",
+  "https://backend-clinica-veterinaria-v2.onrender.com",
   "http://localhost:3000",
   "http://localhost:3001",
 ];
