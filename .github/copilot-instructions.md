@@ -1,67 +1,158 @@
-# Copilot Instructions for Backend-Clinica-Veterinaria-v2
+# Copilot Instructions for Veterinary Clinic System
 
-## Project Overview
-This project is a backend for a veterinary clinic management system. It is structured as a Node.js application with the following key components:
+## Architecture Overview
 
-- **API Endpoints**: Defined in `routes/` directory, each file corresponds to a specific resource (e.g., `animals.js`, `appointments.js`).
-- **Controllers**: Located in `controllers/`, these files handle the business logic for each resource.
-- **Models**: Found in `models/`, these files define the data structure and database interactions.
-- **Middleware**: Custom middleware for authentication and admin checks are in `middleware/`.
-- **Services**: External integrations, such as `googleCalendarService.js`, are in `services/`.
+This is a **full-stack veterinary clinic management system** with:
+- **Backend**: Node.js/Express (port 5000) with MongoDB via Mongoose
+- **Frontend**: Next.js 15 with TypeScript, Tailwind CSS, and Material-UI
+- Both located in `backend-clinica-veterinaria-v2/` and `frontend-clinica-veterinaria-v2/` directories
 
-## Key Patterns and Conventions
+### Data Flow Pattern
+Routes → Controllers → Services (business logic) → Models (Mongoose schemas) ↔ MongoDB
 
-### Routing
-- Routes are modularized by resource and located in `routes/`.
-- Example: `routes/animals.js` defines endpoints for animal-related operations.
+## Backend Essentials
 
-### Controllers
-- Controllers handle the core logic and are named after the resource they manage.
-- Example: `controllers/animalController.js` manages animal-related logic.
+### Authentication Pattern
+- **Token storage**: JWT tokens in `Authorization: Bearer <token>` OR `x-auth-token` headers (both supported)
+- **Auth middleware** (`middleware/auth.js`): Decodes token, sets `req.user` from JWT payload
+- **JWT payload format**: `{ user: { id: '<userId>', role: 'user|admin' }, ... }`
+- **Key services**: `UserService.validateCredentials()` (login), `UserService.createUser()` (register)
+- Uses bcryptjs for password hashing
 
-### Models
-- Models define the schema and database interactions.
-- Example: `models/animalModel.js` defines the schema for animals.
+### Service-Oriented Model Layer
+Each resource has TWO files:
+- **Model** (e.g., `models/Appointment.js`): Mongoose schema definition only
+- **Service** (e.g., `models/AppointmentService.js`): Static methods for DB operations (create, read, update, delete)
 
-### Middleware
-- Authentication middleware is in `middleware/auth.js`.
-- Admin-specific checks are in `middleware/adminMiddleware.js`.
+Example pattern from `AppointmentService`:
+```javascript
+static async createAppointment(appointmentData) { 
+  const newAppointment = new Appointment(appointmentData);
+  await newAppointment.save();
+  return { success: true, message: '...', appointment: newAppointment, status: 201 };
+}
+```
 
-### Services
-- External integrations are abstracted into services.
-- Example: `services/googleCalendarService.js` integrates with Google Calendar.
+### Google Calendar Integration
+- Service: `services/googleCalendarService.js` uses JWT (Service Account) auth
+- Required env vars: `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_CALENDAR_ID`
+- Returns `{ id, htmlLink }` on success; gracefully fails if unconfigured
+- Used in appointment creation to sync with external calendar
 
-## Developer Workflows
+### Critical ENV Variables
+```
+MONGO_URI=mongodb://...
+JWT_SECRET=your_secret_key
+GOOGLE_SERVICE_ACCOUNT_EMAIL=...
+GOOGLE_PRIVATE_KEY=...
+GOOGLE_CALENDAR_ID=...
+NODE_ENV=development|production
+```
 
-### Running the Server
-- Use `npm start` to start the server.
-- Use `npm run dev` for development mode with hot-reloading.
+### Route Organization
+Routes mounted in `server.js` at `/api/<resource>`:
+- `/api/auth` - login, register, password reset (OTP support in User model)
+- `/api/user` - profile, update user data
+- `/api/pets` - pet CRUD (owner-filtered)
+- `/api/appointments` - booking, client appointments, admin view all
+- `/api/medicines`, `/api/vaccines`, `/api/services`, `/api/consults` - similar CRUD patterns
+- `/api/chat` - AI chat (uses OpenAI or Google Generative AI)
 
-### Testing
-- Tests are located in the root directory (e.g., `testCorsMount.js`).
-- Run tests with `npm test`.
+Admin routes protected with `auth` + `adminMiddleware`.
 
-### Debugging
-- Use `console.log` for quick debugging.
-- For advanced debugging, use Node.js Inspector (`node --inspect`).
+## Frontend Essentials
 
-## External Dependencies
-- **Database**: Ensure the database connection is configured in `config/db.js`.
-- **Google Calendar**: Requires API keys configured in `services/googleCalendarService.js`.
+### Context Providers (Root Layout)
+- **AuthProvider** (`src/contexts/auth-context.tsx`): User state, login/logout, profile refresh
+- **AppointmentsProvider** (`src/contexts/appointments-context.tsx`): Shared appointment state
+- Wraps all children in `src/app/layout.tsx`
 
-## Tips for AI Agents
-- Follow the modular structure: routes -> controllers -> models.
-- Look for reusable patterns in `services/` and `middleware/`.
-- When adding new features, ensure they align with the existing folder structure and naming conventions.
-- Always validate inputs in controllers to maintain data integrity.
+### Auth Context Pattern
+```tsx
+const { user, setUser, logout, loading, updateUser } = useContext(AuthContext);
+// user has: id, username, role, documentId, phone, cep, addressStreet, etc.
+// Tokens stored in localStorage (check context for persistence logic)
+```
 
-## Example: Adding a New Resource
-1. Create a new route file in `routes/` (e.g., `routes/newResource.js`).
-2. Implement the logic in a corresponding controller (e.g., `controllers/newResourceController.js`).
-3. Define the schema in a model file (e.g., `models/newResourceModel.js`).
-4. Add any necessary middleware or services.
-5. Update `server.js` to include the new route.
+### Backend URL Configuration
+- `src/lib/config.ts`: exports `BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'`
+- All API calls: `fetch(`${BACKEND_URL}/api/...`, { headers: { 'x-auth-token': token } })`
+
+### Component Structure
+- `src/components/shared/` - Header, Footer, common UI
+- `src/components/home/` - Homepage sections
+- `src/components/ui/` - Radix-based primitive components
+- `src/modals/` - Modal dialogs (booking, medicines, vaccines, rating, sign-in)
+- Each modal is a self-contained form component
+
+### Styling Stack
+- **Tailwind CSS** + **Tailwind Merge** for utility classes
+- **Material-UI (MUI)** for complex components
+- **Lucide icons** for SVG icons
+- Custom CSS in `src/app/globals.css`
+
+### Key Dependencies
+- `next-pwa` for PWA support (manifest + service worker)
+- `react-markdown` for displaying formatted text
+- `axios` for some API calls (mixed with fetch)
+- `date-fns` for date manipulation
+- `jwt-decode` for token inspection
+
+## Cross-Stack Patterns
+
+### Appointment Workflow
+1. Frontend: Booking modal collects pet, type, date, time, description
+2. Backend controller: Verifies pet ownership via JWT `clientId`, creates appointment
+3. Google Calendar: Tries to sync; non-blocking if fails
+4. Response includes `{ appointment, googleEvent: { id, link } }`
+5. Frontend displays confirmation with calendar link
+
+### User/Pet Relationship
+- Users own pets (Pet model has `ownerId`)
+- Appointments require valid `petId` matching user's pets
+- PetService filters by `clientId` (from JWT) before returning
+
+### Error Responses
+Backend returns consistent shape:
+```json
+{ "success": false, "message": "...", "errors": { "field": "error" }, "status": 400 }
+```
+
+### CORS Configuration
+- Dev: Any origin allowed
+- Prod: Whitelist includes `joyce-veterinaria.vercel.app`, `localhost:3000`
+- Methods: GET, POST, OPTIONS
+- Headers: Content-Type, x-auth-token, Authorization
+
+## Adding New Features
+
+**For a new resource (e.g., "Diagnoses")**:
+1. **Backend**:
+   - `models/Diagnosis.js` - Mongoose schema
+   - `models/DiagnosisService.js` - CRUD methods
+   - `controllers/diagnosisController.js` - Route handlers (validate JWT, call service)
+   - `routes/diagnosis.js` - Express router (mount in `server.js`)
+2. **Frontend**:
+   - `src/modals/add-diagnosis/` - Create form modal
+   - `src/contexts/` - Add provider if shared state needed
+   - Use `BACKEND_URL` + `x-auth-token` in fetch calls
+
+## Running & Debugging
+
+### Backend
+- `npm start` → runs `node server.js` (uses `server.js` as entry)
+- Check `diagnose.js` to validate env vars before starting
+- Verbose logging in `server.js` for route mounting
+
+### Frontend
+- `npm run dev` → Next.js dev server (port 3000)
+- `npm run build` → Production build
+- Service worker registered in `components/register-service-worker.tsx`
+
+### Database
+- Mongoose auto-creates collections; verify `MONGO_URI` in `.env`
+- Models use `mongoose.model('ResourceName', schema)` export
 
 ---
 
-This document is a living guide. Update it as the project evolves.
+**Key Principle**: This is a **monolithic full-stack app with separated frontend/backend**. Treat them as independent deployments; communication is HTTP-based only.
