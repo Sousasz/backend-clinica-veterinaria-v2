@@ -36,6 +36,7 @@ const app = express();
 // Configura CORS de forma mais robusta — permite origens definidas e responde a preflight
 const allowedOrigins = [
   "https://joyce-veterinaria.vercel.app",
+  "https://clinica-veterinaria-frontend.vercel.app",
   "http://localhost:3000",
   "http://localhost:3001",
 ];
@@ -44,15 +45,15 @@ const corsOptions = {
   origin: function (origin, callback) {
     // allow server-to-server or tools without origin
     if (!origin) return callback(null, true);
-    // During development, permit any origin so local frontends (ports) work without extra config
+    // Durante desenvolvimento, permitir qualquer origem para facilitar testes locais
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
-
+    // Em produção, verificar contra lista de origens permitidas
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
     }
     return callback(new Error('Origin not allowed by CORS'));
   },
-  methods: ["GET", "POST", "OPTIONS"],
+  methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
   allowedHeaders: ["Content-Type", "x-auth-token", "Authorization"],
   credentials: true,
 };
