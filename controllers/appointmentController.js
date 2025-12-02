@@ -43,6 +43,12 @@ exports.createAppointment = async (req, res) => {
       return res.status(400).json({ message: 'Data/hora inválida.' });
     }
 
+    // Verifica se o horário já foi reservado
+    const slotTaken = await AppointmentService.isSlotTaken(scheduledAt);
+    if (slotTaken) {
+      return res.status(409).json({ message: 'Horário já agendado. Escolha outro horário.' });
+    }
+
     const result = await AppointmentService.createAppointment({
       client: clientId,
       pet: pet._id,
@@ -122,5 +128,22 @@ exports.getAllAppointments = async (req, res) => {
   } catch (error) {
     console.error('Erro no appointmentController.getAllAppointments:', error);
     res.status(500).json({ message: 'Erro interno do servidor ao buscar todos os agendamentos' });
+  }
+};
+
+exports.deleteAppointment = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id) return res.status(400).json({ message: 'ID do agendamento não fornecido.' });
+
+    const result = await AppointmentService.deleteAppointment(id);
+    if (!result.success) {
+      return res.status(result.status || 400).json({ message: result.message || 'Erro ao deletar agendamento' });
+    }
+
+    res.status(result.status).json({ message: result.message });
+  } catch (error) {
+    console.error('Erro no appointmentController.deleteAppointment:', error);
+    res.status(500).json({ message: 'Erro interno do servidor ao deletar agendamento' });
   }
 };
