@@ -68,3 +68,35 @@ exports.getPets = async (req, res) => {
     res.status(500).json({ message: 'Erro interno do servidor ao buscar pets' });
   }
 };
+
+exports.updatePet = async (req, res) => {
+  try {
+    let token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      token = req.headers['x-auth-token'] || req.header('x-auth-token');
+    }
+    if (!token) {
+      return res.status(401).json({ message: 'Token de autenticação não fornecido.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const ownerId = decoded.user?.id || decoded.id;
+
+    const petId = req.params.id;
+    const updateData = req.body;
+
+    const result = await PetService.updatePet(ownerId, petId, updateData);
+
+    if (!result.success) {
+      return res.status(result.status || 400).json({ message: result.message || 'Erro ao atualizar pet', errors: result.errors });
+    }
+
+    res.status(result.status).json({ message: result.message, pet: result.pet });
+  } catch (error) {
+    console.error('Erro no petController.updatePet:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Token inválido.' });
+    }
+    res.status(500).json({ message: 'Erro interno do servidor ao atualizar pet' });
+  }
+};
